@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Solar System</title>
+</head>
+<body onload="init()">
+    <canvas width="1200" height="600" id="main"></canvas>
+
+
+    <script src="../resource/three.js"></script>
+    <script src="../resource/stats.min.js"></script>
+    <script>
+        var scene, renderer, camera,stat;
+        var sun,
+            Mercury,  //水星
+            Venus,  //金星
+            Earth,
+            Mars,
+            Jupiter, //木星
+            Saturn, //土星
+            Uranus, //天王
+            Neptune, //海王
+            stars = [];
+
+
+
+        var ring;
+
+        function init(){
+            /*stats帧率统计*/
+            stat = new Stats();
+            stat.domElement.style.position = 'absolute';
+            stat.domElement.style.right = '0px';
+            stat.domElement.style.top = '0px';
+            document.body.appendChild(stat.domElement);
+
+            /*renderer*/
+            renderer = new THREE.WebGLRenderer({
+                canvas: document.getElementById('main')
+            });
+            renderer.shadowMap.enabled = true; //辅助线
+            renderer.shadowMapSoft = true; //柔和阴影
+
+            /*scene*/
+            scene = new THREE.Scene();
+
+            /*camera*/
+            camera = new THREE.PerspectiveCamera(45,2,1,500);
+            camera.position.set(200,100,200);
+            camera.lookAt(new THREE.Vector3(0,0,0));
+            scene.add(camera);
+
+
+            /*sun*/
+            sun = new THREE.Mesh( new THREE.SphereGeometry( 12 ,16 ,16 ),
+                new THREE.PointsMaterial( {color: 0xff6633} ) 
+            );
+            sun.castShadow = true;
+            sun.receiveShadow = true;
+            scene.add(sun);
+
+            /*stars*/
+            Mercury = initStar(0.02,0,'rgb(124,131,203)',20,2);
+            stars.push(Mercury);
+
+            Venus = initStar(0.012,0,'rgb(190,138,44)',30,4);
+            stars.push(Venus);
+
+            Earth = initStar(0.010,0,'rgb(46,69,119)',40,5);
+            stars.push(Earth);
+
+            Mars = initStar(0.008,0,'rgb(210,81,16)',50,4);
+            stars.push(Mars);
+
+            Jupiter = initStar(0.006,0,'rgb(254,208,101)',70,9);
+            stars.push(Jupiter);
+
+            Saturn = initStar(0.005,0,'rgb(210,140,39)',100,7,{
+                color:'rgb(136,75,30)',
+                innerRedius:9,
+                outerRadius:11
+            });
+            stars.push(Saturn);
+
+            Uranus = initStar(0.003,0,'rgb(49,168,218)',120,4);
+            stars.push(Uranus);
+
+            Neptune = initStar(0.002,0,'rgb(84,125,204)',150,3);
+            stars.push(Neptune);
+
+            //环境光
+            var ambient = new THREE.AmbientLight(0x777777);
+            scene.add(ambient);
+
+            /*太阳光*/
+            var sunLight = new THREE.PointLight(0xcccc00,1,500);
+            scene.add(sunLight);
+
+            renderer.render(scene,camera);
+
+            requestAnimationFrame(move);
+        }
+
+        function initStar(speed,angle,color,distance,volume,ringMsg){
+            var mesh = new THREE.Mesh( new THREE.SphereGeometry( volume, 16,16 ),
+                new THREE.MeshPhongMaterial( {color: color} ) 
+            );
+            mesh.position.x = distance;
+            mesh.receiveShadow = true;
+            mesh.castShadow = true;
+
+            /*轨道*/
+            var track = new THREE.Mesh( new THREE.RingGeometry(distance-0.2, distance+0.2, 64,1),
+                new THREE.MeshBasicMaterial( { color: 0x888888, side: THREE.DoubleSide } )
+            );
+            track.rotation.x = - Math.PI / 2;
+            scene.add(track);
+
+            var star = {
+                Mesh : mesh,
+                speed : speed,
+                angle : angle,
+                distance : distance
+            }
+
+            /*如果有碎星带*/
+            if(ringMsg){
+                var ring = new THREE.Mesh( new THREE.RingGeometry(ringMsg.innerRedius, ringMsg.outerRadius, 32, 6),
+                new THREE.MeshBasicMaterial( { color: ringMsg.color, side: THREE.DoubleSide, opacity:.7, transparent:true } )
+                );
+                ring.rotation.x = - Math.PI / 4;
+                ring.rotation.y = - Math.PI / 4;
+                scene.add(ring);
+
+                star.ring = ring;
+            }
+
+            
+            scene.add(mesh);
+
+            return star;
+        }
+
+        function move(){
+            stat.begin();
+            
+            for(var i = 0; i< stars.length; i++){
+                moveEachStar(stars[i]);
+            }
+
+            renderer.render(scene,camera);
+            requestAnimationFrame(move);
+
+            stat.end();
+        }
+
+        function moveEachStar(star){
+            star.angle+=star.speed;
+            if (star.angle > Math.PI * star.distance) {
+                star.angle -= Math.PI * star.distance;
+            }
+
+            star.Mesh.position.set(star.distance * Math.sin(star.angle), 0, star.distance * Math.cos(star.angle));
+
+            if(star.ring){
+                star.ring.position.set(star.distance * Math.sin(star.angle), 0, star.distance * Math.cos(star.angle));
+            }
+        }
+
+
+    </script>
+</body>
+</html>
