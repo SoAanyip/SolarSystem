@@ -10,8 +10,12 @@
 
     <script src="../resource/three.js"></script>
     <script src="../resource/stats.min.js"></script>
+    <script src="../resource/firstPersonControl.js"></script>
     <script>
-        var scene, renderer, camera,stat;
+        var scene, renderer, camera, backdrop, stat, control;
+
+        var cameraFar = 1500;
+
         var sun,
             Mercury,  //水星
             Venus,  //金星
@@ -23,9 +27,9 @@
             Neptune, //海王
             stars = [];
 
+        var clock = new THREE.Clock();
 
-
-        var ring;
+        var show = document.getElementById('show');
 
         function init(){
             /*stats帧率统计*/
@@ -47,8 +51,8 @@
             scene = new THREE.Scene();
 
             /*camera*/
-            camera = new THREE.PerspectiveCamera(45,2,1,500);
-            camera.position.set(200,100,200);
+            camera = new THREE.PerspectiveCamera(45,2,1,cameraFar);
+            camera.position.set(-200,50,0);
             camera.lookAt(new THREE.Vector3(0,0,0));
             scene.add(camera);
 
@@ -120,26 +124,86 @@
             var sunLight = new THREE.PointLight(0xddddaa,1.5,500);
             scene.add(sunLight);
 
-            /*背景图*/
-            var backdropImg = THREE.ImageUtils.loadTexture( "../img/sprite.jpg" ); 
-            /*var material = new THREE.SpriteMaterial( { map: backdropImg, color: 0xffffff, fog: true } ); 
-            var sprite = new THREE.Sprite( material ); 
-            scene.add( sprite );*/
-            var backdrop = new THREE.Mesh( 
-                new THREE.PlaneGeometry( 1000, 500 ),
-                new THREE.MeshBasicMaterial( {color: 0x999999, side: THREE.DoubleSide, map: backdropImg} ) ); 
-
-            /*设置背景图的位置*/
-            backdrop.lookAt( new THREE.Vector3(200, 100, 200) )
-            var cameraDistance = Math.sqrt(200*200 + 100*100 + 200*200);
-            backdrop.position.set( 199*(-200/cameraDistance), 199*(-100/cameraDistance), 199*(-200/cameraDistance) );
-            console.log(backdrop.position);
-
-            scene.add( backdrop );
-
-            /*背景星星*/
-            //backdropStars(500,200);
             
+            /*背景星星*/
+            var particles = 10000;
+            var bufferGeometry = new THREE.BufferGeometry();
+
+            var positions = new Float32Array( particles * 3 );
+            var colors = new Float32Array( particles * 3 );
+
+            var color = new THREE.Color();
+
+            var n = 500, n2 = n / 2; // particles spread in the cube
+
+            for ( var i = 0; i < positions.length; i += 3 ) {
+
+                // positions
+
+                var x = ( Math.random() * n *2 )* (Math.random()<.5? -1 : 1);
+                var y = ( Math.random() * n *2 )* (Math.random()<.5? -1 : 1);
+                var z = ( Math.random() * n *2 )* (Math.random()<.5? -1 : 1);
+
+                var biggest = Math.abs(x) > Math.abs(y) ? Math.abs(x) > Math.abs(z) ?　'x' : 'z' : 
+                    Math.abs(y) > Math.abs(z) ? 'y' : 'z';
+
+                var pos = {
+                    x : x,
+                    y : y,
+                    z : z
+                }
+
+                if(Math.abs(pos[biggest]) < 500) pos[biggest] = pos[biggest] < 0 ? -500 : 500;
+
+                x = pos['x'];
+                y = pos['y'];
+                z = pos['z'];
+
+                positions[ i ]     = x;
+                positions[ i + 1 ] = y;
+                positions[ i + 2 ] = z;
+
+
+
+                // colors
+
+                /*var vx = ( Math.abs(x) / n*2 ) ;
+                var vy = ( Math.abs(y) / n*2 ) ;
+                var vz = ( Math.abs(z) / n*2 ) ;*/
+                var vx = ( 1 ) ;
+                var vy = ( 1 ) ;
+                var vz = ( 1 ) ;
+
+                color.setRGB( vx, vy, vz );
+
+                colors[ i ]     = color.r;
+                colors[ i + 1 ] = color.g;
+                colors[ i + 2 ] = color.b;
+
+            }
+
+            bufferGeometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+            bufferGeometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
+
+            bufferGeometry.computeBoundingSphere();
+
+            //
+
+            var material = new THREE.PointsMaterial( { size: 6, vertexColors: THREE.VertexColors } );
+
+            particleSystem = new THREE.Points( bufferGeometry, material );
+            scene.add( particleSystem );
+
+
+
+            /*镜头控制*/
+            control = new THREE.FirstPersonControls( camera );
+            control.movementSpeed = 100;
+            control.lookSpeed = 0.125;
+            control.lookVertical = true;
+            control.limitCube = 400;
+
+            camera.lookAt(new THREE.Vector3(0,0,0));
 
             renderer.render(scene,camera);
 
@@ -147,7 +211,7 @@
         }
 
         /**
-         * [initPlanet description]
+         * 初始化行星
          * @param  {[type]} speed    [description]
          * @param  {[type]} angle    [description]
          * @param  {[type]} color    [description]
@@ -183,7 +247,7 @@
                 var ring = new THREE.Mesh( new THREE.RingGeometry(ringMsg.innerRedius, ringMsg.outerRadius, 32, 6),
                 new THREE.MeshBasicMaterial( { color: ringMsg.color, side: THREE.DoubleSide, opacity:.7, transparent:true } )
                 );
-                ring.rotation.x = - Math.PI / 4;
+                ring.rotation.x = - Math.PI / 3;
                 ring.rotation.y = - Math.PI / 4;
                 scene.add(ring);
 
@@ -196,8 +260,9 @@
             return star;
         }
 
+        /*行星移动*/
         function move(){
-            stat.begin();
+            //stat.begin();
             
             for(var i = 0; i< stars.length; i++){
                 moveEachStar(stars[i]);
@@ -207,7 +272,14 @@
             renderer.render(scene,camera);
             requestAnimationFrame(move);
 
-            stat.end();
+            control.update( clock.getDelta() );
+
+
+            camera.position.x = THREE.Math.clamp( camera.position.x, -400, 400 );
+            camera.position.y = THREE.Math.clamp( camera.position.y, -400, 400 );
+            camera.position.z = THREE.Math.clamp( camera.position.z, -400, 400 );
+
+            stat.update();
         }
 
         function moveEachStar(star){
@@ -225,7 +297,17 @@
             }
         }
 
-        function backdropStars(num,minLimit){
+        /*键盘监听*/
+        function onkeydown(ev){
+            var code = ev.which || ev.keyCode;
+            if(code == 87){
+                /*camera.position*/
+            }
+            console.log(ev.which);
+        }
+
+
+        /*function backdropStars(num,minLimit){
 
             for(var i = 0; i<num; i++){
                 var radius = Math.random()*1+.5;
@@ -260,7 +342,7 @@
                 return ( Math.random()*minLimit ) * (Math.random()<.5? -1 : 1);
             }
             
-        }
+        }*/
 
     </script>
 </body>
