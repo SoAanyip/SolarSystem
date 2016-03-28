@@ -55,7 +55,7 @@ module.exports = {
         scene.add(camera);
 
         /*sun skin pic*/
-        let sunSkinPic = THREE.ImageUtils.loadTexture('../resource/img/sunCore.jpg', {}, function() {
+        let sunSkinPic = THREE.ImageUtils.loadTexture('../resource/img/sunCore.jpg', {}, () => {
             renderer.render(scene, camera);
         });
 
@@ -280,9 +280,9 @@ module.exports = {
 
     /*初始化指向显示星星名字*/
     displayPlanetName(){
-        for(let i = 0; i<stars.length; i++){
-            nameConstructor(stars[i].name,stars[i].volume);
-        }
+        stars.forEach(star=>
+            nameConstructor(star.name,stars.volume);
+        )
         nameConstructor('Sun', 12);
 
         /*根据行星名字和体积构造显示名字*/
@@ -304,10 +304,10 @@ module.exports = {
     /*行星移动*/
     move(){
 
-        /*行星公转*/            
-        for(let i = 0; i< stars.length; i++){
-            this.moveEachStar(stars[i]);
-        }
+        /*行星公转*/   
+        stars.forEach(star=>
+             this.moveEachStar(star);
+        )
 
         /*太阳自转*/
         Sun.rotation.y = (Sun.rotation.y == 2*Math.PI ? 0.0008*Math.PI : Sun.rotation.y+0.0008*Math.PI);
@@ -360,9 +360,7 @@ module.exports = {
     moveEachStar(star){
 
         star.angle+=star.speed;
-        if (star.angle > Math.PI * star.distance) {
-            star.angle -= Math.PI * star.distance;
-        }
+        (star.angle > Math.PI * star.distance) && star.angle -= Math.PI * star.distance;
 
         star.Mesh.position.set(star.distance * Math.sin(star.angle), 0, star.distance * Math.cos(star.angle));
 
